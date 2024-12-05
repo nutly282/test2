@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        canvas {
+            background-color: #000;
+            display: block;
+        }
+        .game-over, .start-screen {
+            display: none;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        #countdown {
+            font-size: 30px;
+            margin-top: 20px;
+        }
+        #status {
+            position: absolute;
+            top: 20px;
+            font-size: 20px;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="start-screen" id="startScreen">
+        <h1>贪吃蛇游戏</h1>
+        <button onclick="startGame()">开始游戏</button>
+    </div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div class="game-over" id="gameOverScreen">
+        <h1>游戏结束！</h1>
+        <p id="scoreDisplay">得分：0</p>
+        <button onclick="restartGame()">重新开始</button>
+    </div>
+    <div id="countdown" class="start-screen"></div>
+    <div id="status"></div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const box = 20; // 单位大小
+        const canvasSize = 400;
+        const rows = canvasSize / box;
+        const columns = canvasSize / box;
+
+        let snake, direction, food, score, gameOver, gameStarted;
+
+        // 初始化游戏
+        function initGame() {
+            snake = [{ x: 5, y: 5 }];
+            direction = "RIGHT";
+            food = {
+                x: Math.floor(Math.random() * columns),
+                y: Math.floor(Math.random() * rows),
+            };
+            score = 0;
+            gameOver = false;
+            gameStarted = false;
+            document.getElementById("gameOverScreen").style.display = "none";
+            canvas.style.display = "none";
+            document.getElementById("startScreen").style.display = "block";
+            document.getElementById("countdown").textContent = "";
+            document.getElementById("status").textContent = "";
+        }
+
+        // 绘制单元格
+        function drawBox(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * box, y * box, box, box);
+        }
+
+        // 绘制蛇
+        function drawSnake() {
+            snake.forEach((segment) => drawBox(segment.x, segment.y, "green"));
+        }
+
+        // 绘制食物
+        function drawFood() {
+            drawBox(food.x, food.y, "red");
+        }
+
+        // 更新蛇的位置
+        function moveSnake() {
+            let head = { ...snake[0] };
+
+            if (direction === "UP") head.y -= 1;
+            if (direction === "DOWN") head.y += 1;
+            if (direction === "LEFT") head.x -= 1;
+            if (direction === "RIGHT") head.x += 1;
+
+            // 蛇吃食物
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                food = {
+                    x: Math.floor(Math.random() * columns),
+                    y: Math.floor(Math.random() * rows),
+                };
+            } else {
+                snake.pop(); // 移除尾部
+            }
+
+            snake.unshift(head);
+        }
+
+        // 检测游戏结束
+        function checkCollision() {
+            const head = snake[0];
+
+            // 撞墙
+            if (head.x < 0 || head.y < 0 || head.x >= columns || head.y >= rows) {
+                return true;
+            }
+
+            // 撞自己
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // 游戏结束逻辑
+        function endGame() {
+            gameOver = true;
+            canvas.style.display = "none";
+            const gameOverScreen = document.getElementById("gameOverScreen");
+            gameOverScreen.style.display = "block";
+            document.getElementById("scoreDisplay").textContent = `得分：${score}`;
+        }
+
+        // 更新游戏
+        function update() {
+            if (gameOver) return;
+
+            if (checkCollision()) {
+                endGame();
+                return;
+            }
+
+            moveSnake();
+            ctx.clearRect(0, 0, canvasSize, canvasSize);
+            drawFood();
+            drawSnake();
+
+            // 显示蛇的位置
+            document.getElementById("status").textContent = `蛇的位置：(${snake[0].x}, ${snake[0].y})`;
+        }
+
+        // 控制方向
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "ArrowUp" && direction !== "DOWN") direction = "UP";
+            if (event.key === "ArrowDown" && direction !== "UP") direction = "DOWN";
+            if (event.key === "ArrowLeft" && direction !== "RIGHT") direction = "LEFT";
+            if (event.key === "ArrowRight" && direction !== "LEFT") direction = "RIGHT";
+        });
+
+        // 重新开始游戏
+        function restartGame() {
+            initGame();
+            startGame();
+        }
+
+        // 游戏开始
+        function startGame() {
+            document.getElementById("startScreen").style.display = "none";
+            canvas.style.display = "block";
+            gameStarted = true;
+            let countdown = 3;
+            const countdownElement = document.getElementById("countdown");
+
+            const countdownInterval = setInterval(() => {
+                if (countdown > 0) {
+                    countdownElement.textContent = `游戏开始倒计时：${countdown}`;
+                    countdown--;
+                } else {
+                    countdownElement.textContent = "";
+                    clearInterval(countdownInterval);
+                    gameLoop();
+                }
+            }, 1000);
+        }
+
+        // 游戏主循环
+        function gameLoop() {
+            if (!gameStarted) return;
+            update();
+            if (!gameOver) {
+                setTimeout(gameLoop, 200);
+            }
+        }
+
+        // 初始化并开始游戏
+        initGame();
+    </script>
+</body>
+</html>
